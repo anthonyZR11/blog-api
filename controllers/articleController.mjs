@@ -1,9 +1,30 @@
-import { getAllArticlesModel, getAllArticleByIdModel, postArticleModel } from '../models/articleModel.mjs'
-import { responseData } from '../helpers/responseHelper.mjs'
+import { getAllArticlesModel, getAllArticleByIdModel, postArticleModel, patchArticleModel, deleteArticleModel } from '../models/articleModel.mjs'
+import { responseData } from '../helpers/helpers.mjs'
 
-export const getAllArticles = async (_req, res) => {
+export const getAllArticles = async (req, res) => {
   try {
-    const articles = await getAllArticlesModel()
+    const allowedQueries = ['category', 'page', 'limit'] // Lista de parámetros válidos
+    const category = req.query.category ?? 'all'
+    const page = !isNaN(+req.query.page) ? +req.query.page : 1
+    const limit = !isNaN(+req.query.limit) ? +req.query.limit : 6
+    const offset = (page - 1) * limit
+
+    console.log(req.query.page)
+    console.log(page, limit, offset)
+
+    // Verifica si hay parámetros no permitidos
+    const invalidQueries = Object.keys(req.query).filter(
+      (key) => !allowedQueries.includes(key)
+    )
+
+    if (invalidQueries.length > 0) {
+      return res.status(400).json(responseData({
+        status: 400,
+        message: 'No se proceso la petición',
+        error: `Parámetros inválidos: ${invalidQueries.join(', ')}`
+      }))
+    }
+    const [articles, totalRows] = await getAllArticlesModel({ category, offset, limit })
 
     if (articles.length === 0) {
       return res.status(404).json(responseData({
@@ -11,16 +32,19 @@ export const getAllArticles = async (_req, res) => {
         message: 'No se encontraron artículos'
       }))
     }
-    return res.status.json(responseData({
+    return res.json(responseData({
       status: 200,
       message: 'Articulos obtenidos con exito',
-      data: articles
+      data: articles,
+      page,
+      limit,
+      totalRows
     }))
   } catch (error) {
     return res.status(500).json(responseData({
       status: 500,
       message: 'Error al obtener los artículos',
-      errors: error.message
+      error: error.message
     }))
   }
 }
@@ -33,11 +57,11 @@ export const getAllArticleById = async (req, res) => {
     if (article.length === 0) {
       return res.status(404).json(responseData({
         status: 404,
-        message: 'No se encontraro el artículo'
+        message: 'No se encontro el artículo'
       }))
     }
 
-    return res.status(200).json(responseData({
+    return res.json(responseData({
       status: 200,
       message: 'Articulo obtenido con exito',
       data: article
@@ -46,7 +70,7 @@ export const getAllArticleById = async (req, res) => {
     return res.status(500).json(responseData({
       status: 500,
       message: 'Error al obtener el artículo',
-      errors: error.message
+      error: error.message
     }))
   }
 }
@@ -57,13 +81,6 @@ export const postArticle = async (req, res) => {
 
     await postArticleModel({ title, body, category, tag, userId })
 
-    // if (!article) {
-    //   return res.status(400).json(responseData({
-    //     status: 400,
-    //     message: 'Error al inserta el articulo'
-    //   }))
-    // }
-
     return res.status(201).json(responseData({
       status: 201,
       message: 'Articulo agregado con exito'
@@ -72,15 +89,53 @@ export const postArticle = async (req, res) => {
     return res.status(500).json(responseData({
       status: 500,
       message: 'Error al insertar el articulo',
-      errors: error.message
+      error: error.message
     }))
   }
 }
 
-export const putArticle = (req, res) => {
-  console.log(req)
+export const patchArticle = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { title, body, category, tag, user_id: userId } = req.body
+
+    const article = await patchArticleModel({ title, body, category, tag, userId, id })
+
+    if (article === 0) {
+      return res.status(202).json(responseData({
+        status: 202,
+        message: 'No se realizaron modificaciones al articulo'
+      }))
+    }
+
+    return res.json(responseData({
+      status: 200,
+      message: 'Articulo actualizado con exito'
+    }))
+  } catch (error) {
+    return res.status(500).json(responseData({
+      status: 500,
+      message: 'Error al actualizar el articulo',
+      error: error.message
+    }))
+  }
 }
 
-export const deleteArticle = (req, res) => {
-  console.log(req)
+export const deleteArticle = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    await deleteArticleModel({ id })
+
+    return res.status(202).json(responseData({
+      status: 204,
+      message: 'Articulo eliminado'
+    }))
+  } catch (error) {
+    return res.status(500).json(responseData({
+      status: 500,
+      message: 'Error al actualizar el articulo',
+      error: error.message()
+    }))
+  }
 }

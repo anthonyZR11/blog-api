@@ -3,14 +3,14 @@ import { responseData } from '../helpers/helpers.mjs'
 
 export const getAllArticles = async (req, res) => {
   try {
-    const allowedQueries = ['category', 'page', 'limit'] // Lista de parámetros válidos
+    const allowedQueries = ['category', 'page', 'limit', 'order'] // Lista de parámetros válidos
     const category = req.query.category ?? 'all'
     const page = !isNaN(+req.query.page) ? +req.query.page : 1
     const limit = !isNaN(+req.query.limit) ? +req.query.limit : 6
     const offset = (page - 1) * limit
+    const order = req.query.order ?? 'DESC'
 
-    console.log(req.query.page)
-    console.log(page, limit, offset)
+    const redisClient = req.app.locals.redisClient
 
     // Verifica si hay parámetros no permitidos
     const invalidQueries = Object.keys(req.query).filter(
@@ -24,7 +24,7 @@ export const getAllArticles = async (req, res) => {
         error: `Parámetros inválidos: ${invalidQueries.join(', ')}`
       }))
     }
-    const [articles, totalRows] = await getAllArticlesModel({ category, offset, limit })
+    const [articles, totalRows] = await getAllArticlesModel({ category, offset, limit, order })
 
     if (articles.length === 0) {
       return res.status(404).json(responseData({
@@ -32,14 +32,20 @@ export const getAllArticles = async (req, res) => {
         message: 'No se encontraron artículos'
       }))
     }
-    return res.json(responseData({
+
+    const response = responseData({
       status: 200,
       message: 'Articulos obtenidos con exito',
       data: articles,
       page,
       limit,
       totalRows
-    }))
+    })
+
+    const cacheKey = `articles:${category}:${order}:${page}`
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(response))
+
+    return res.json(response)
   } catch (error) {
     return res.status(500).json(responseData({
       status: 500,

@@ -7,7 +7,9 @@
     "cors": "2.8.5",
     "dayjs": "1.11.13",
     "express": "4.21.1",
+    "jsonwebtoken": "9.0.2",
     "mysql2": "3.11.4",
+    "redis": "4.7.0",
     "winston": "3.17.0"
   },
   "devDependencies": {
@@ -18,7 +20,8 @@
     "extends": "./node_modules/standard/eslintrc.json"
   },
   "scripts": {
-    "dev": "nodemon index.mjs",
+    "start": "nodemon --env-file=.env index.mjs",
+    "start:dev": "nodemon --env-file=.env.development index.mjs",
     "build": "node index.mjs"
   },
   "author": "",

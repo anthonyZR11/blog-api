@@ -2,8 +2,8 @@ import { connection } from '../config/database.mjs'
 import { formatDateTime } from '../helpers/helpers.mjs'
 import { logger } from '../utils/utils.mjs'
 
-export const getAllArticlesModel = async ({ category, offset, limit }) => {
-  console.log(category, offset, limit)
+export const getAllArticlesModel = async ({ category, offset, limit, order }) => {
+  console.log('me consultaron')
 
   try {
     const pool = await connection()
@@ -22,22 +22,22 @@ export const getAllArticlesModel = async ({ category, offset, limit }) => {
     FROM articles AS a
     INNER JOIN users AS u ON a.user_id = u.id
     INNER JOIN categories as c ON a.category_id = c.id
-    WHERE a.status = 1`
+    WHERE a.status_id = 1`
 
     const baseQueryCount = `SELECT
       COUNT(*) AS totalRow
     FROM articles AS a
     INNER JOIN users AS u ON a.user_id = u.id
     INNER JOIN categories as c ON a.category_id = c.id
-    WHERE a.status = 1`
+    WHERE a.status_id = 1`
 
     const countRowsCategory = category === 'all'
       ? `${baseQueryCount}`
       : `${baseQueryCount} AND c.slug = ?`
 
     const queryWithCategory = category === 'all'
-      ? `${baseQuery} LIMIT ? OFFSET ?`
-      : `${baseQuery} AND c.slug = ? LIMIT ? OFFSET ?`
+      ? `${baseQuery} ORDER BY created_at ${order} LIMIT ? OFFSET ?`
+      : `${baseQuery} AND c.slug = ? ORDER BY created_at ${order} LIMIT ? OFFSET ?`
 
     const [[{ totalRow }]] = await pool.query(countRowsCategory, (category === 'all' ? [] : [category]))
     const [rows] = await pool.query(queryWithCategory, (category === 'all' ? [+limit, +offset] : [category, +limit, +offset]))

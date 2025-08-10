@@ -43,7 +43,7 @@ export const getAllArticles = async (req, res) => {
     })
 
     const cacheKey = `articles:${category}:${order}:${page}`
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(response))
+    if (redisClient) await redisClient.setEx(cacheKey, 60, JSON.stringify(response))
 
     return res.json(response)
   } catch (error) {
